@@ -1,0 +1,21 @@
+{
+  "name": "astro-server-functions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "sf.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "peerDependencies": {
+    "es-codec": "0.1.2"
+  },
+  "dependencies": {
+    "es-module-lexer": "1.3.0"
+  },
+  "devDependencies": {
+    "astro": "2.8.3"
+  }
+}
