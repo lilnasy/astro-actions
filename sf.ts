@@ -47,17 +47,17 @@ function client() {
                 console.log('transforming client functions')
                 const [ _, exports ] = ESModuleLexer.parse(code)
                 
-                const importEsCodec = `import * as ESCode from "es-codec"`
+                const importEsCodec = `import * as ESCodec from "astro-server-functions/es-codec.ts"`
 
                 const callFunction = dedent`
                 function createCallableServerFunction(name) {
                     return async (...args) => {
                         const response = await fetch("/_sf", {
                             method: "post",
-                            body: ESCode.encode(args),
+                            body: ESCodec.encode(args),
                             headers: { "x-sf": name }
                         })
-                        return ESCode.decode(await response.arrayBuffer())
+                        return ESCodec.decode(await response.arrayBuffer())
                     }
                 }`
                 
@@ -86,7 +86,7 @@ function server() {
                 const MIDDLEWARE_MODULE_ID = '@astro-middleware';
 
                 imports.push(`import * as serverFunctions from ` + JSON.stringify(serverFunctionsModuleId))
-                imports.push(`import * as ESCodec from "es-codec"`)
+                imports.push(`import * as ESCodec from "astro-server-functions/es-codec.ts"`)
                 
                 const body = dedent`
                 async function post({ request }) {

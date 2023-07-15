@@ -1,5 +1,5 @@
 import { defineConfig } from "astro/config"
-import sf from "server-functions"
+import sf from "astro-server-functions"
 import deno from "@astrojs/deno"
 
 export default defineConfig({

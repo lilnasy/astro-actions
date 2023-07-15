@@ -10,9 +10,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/deno": "4.2.0",
     "astro": "2.8.3",
-    "es-codec": "0.1.2",
-    "server-functions": "file:../"
+    "astro-server-functions": "workspace:*",
+    "@astrojs/deno": "4.2.0"
   }
 }
