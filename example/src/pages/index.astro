@@ -1,5 +1,17 @@
 <script>
-	import { f } from "../serverfunctions"
-	console.log(await f())
+	import { sendStreamToServer } from "../serverfunctions"
+	
+	const readable = new ReadableStream({
+		start(controller) {
+			controller.enqueue("Hello")
+			controller.enqueue("from")
+			controller.enqueue("a")
+			controller.enqueue("readable")
+			controller.enqueue("stream.")
+			controller.close()
+		}
+	})
+	
+	console.log(await sendStreamToServer(readable))
 </script>
 <h1></h1>
