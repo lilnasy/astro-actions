@@ -65,13 +65,13 @@ function client() {
                 const streamToIdMap = new WeakMap()
                 
                 function createCallableServerFunction(funName) {
-                    return (...args) => new Promise(async (resolve, reject) => {
+                    return (...args) => new Promise(async resolve => {
                         
                         const websocket = await ws
                         
                         const callId = getCallId()
                         
-                        function eventListener({ data }) {
+                        function listenerForResult({ data }) {
                             const [ type, id, value ] = ESCodec.decode(data)
                             if (type === "result" && id === callId) {
                                 websocket.removeEventListener("message", eventListener)
@@ -79,7 +79,7 @@ function client() {
                             }
                         }
                         
-                        websocket.addEventListener("message", eventListener)
+                        websocket.addEventListener("message", listenerForResult)
                         
                         if (args.length === 1 && args[0] instanceof ReadableStream) {
                             const stream = args[0]
@@ -100,13 +100,9 @@ function client() {
                 // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream#browser_compatibility
                 function iterableStream(readable) {
                     return {
-                        [Symbol.asyncIterator]: () => {
+                        [Symbol.asyncIterator]() {
                             const reader = readable.getReader()
-                            return {
-                                next() {
-                                    return reader.read()
-                                }
-                            }
+                            return { next() { return reader.read() } }
                         }
                     }
                 }
@@ -144,7 +140,6 @@ function server() {
                 imports.push(`import * as ESCodec from "astro-server-functions/es-codec.ts"`)
                 
                 const body = dedent`
-                
                 const idToStreamMap = new Map
                 
                 async function get({ request }) {

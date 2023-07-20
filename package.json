@@ -2,19 +2,17 @@
   "name": "astro-server-functions",
   "version": "1.0.0",
   "description": "",
-  "main": "sf.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "main": "./integration.ts",
+  "include": [ "LICENSE", "es-codec.ts", "integration.ts" ],
   "keywords": [],
-  "author": "",
+  "author": "Arsh",
   "license": "ISC",
   "workspaces": [ "." ],
   "dependencies": {
-    "es-codec": "0.1.2",
+    "es-codec": "git+https://github.com/lilnasy/es-codec#extensions",
     "es-module-lexer": "1.3.0"
   },
   "devDependencies": {
-    "astro": "2.8.3"
+    "astro": "2.9.0"
   }
 }
