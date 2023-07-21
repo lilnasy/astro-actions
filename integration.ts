@@ -47,78 +47,15 @@ function client() {
                 console.log('transforming client functions')
                 const [ _, exports ] = ESModuleLexer.parse(code)
                 
-                const importEsCodec = `import * as ESCodec from "astro-server-functions/es-codec.ts"`
-                
-                const body = dedent`
-                const url = new URL(location)
-                url.pathname = "/_sf"
-                url.protocol = url.protocol.replace('http', 'ws')
-                const ws = new Promise(resolve => {
-                    const ws = new WebSocket(url)
-                    ws.binaryType = "arraybuffer"
-                    ws.onopen = () => resolve(ws)
-                })
-                
-                let getCallId = createCounter()
-                let getStreamId = createCounter()
-                
-                const streamToIdMap = new WeakMap()
-                
-                function createCallableServerFunction(funName) {
-                    return (...args) => new Promise(async resolve => {
-                        
-                        const websocket = await ws
-                        
-                        const callId = getCallId()
-                        
-                        function listenerForResult({ data }) {
-                            const [ type, id, value ] = ESCodec.decode(data)
-                            if (type === "result" && id === callId) {
-                                websocket.removeEventListener("message", eventListener)
-                                resolve(value)
-                            }
-                        }
-                        
-                        websocket.addEventListener("message", listenerForResult)
-                        
-                        if (args.length === 1 && args[0] instanceof ReadableStream) {
-                            const stream = args[0]
-                            const streamId = getStreamId()
-                            websocket.send(ESCodec.encode([ "call with stream", callId, funName, streamId ]))
-                            console.log(stream)
-                            
-                            for await (const value of iterableStream(stream))
-                                websocket.send(ESCodec.encode([ "enqueue", streamId, value ]))
-                            
-                            websocket.send(ESCodec.encode([ "close", streamId ]))
-                        }
-                        
-                        else websocket.send(ESCodec.encode([ "call", callId, funName, args ]))
-                    })
-                }
-                
-                // https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream#browser_compatibility
-                function iterableStream(readable) {
-                    return {
-                        [Symbol.asyncIterator]() {
-                            const reader = readable.getReader()
-                            return { next() { return reader.read() } }
-                        }
-                    }
-                }
-                
-                function createCounter() {
-                    let count = 1
-                    return () => count++
-                }`
+                const imports = `import { createProxy } from "astro-server-functions/client-runtime.ts"`
 
                 const callableExports =
                     exports.map(({ n: name }) => {
-                        if (name === 'default') return `export default createCallableServerFunction(${JSON.stringify(name)})`
-                        else                    return `export const ${name} = createCallableServerFunction(${JSON.stringify(name)})`
+                        if (name === 'default') return `export default createProxy(${JSON.stringify(name)})`
+                        else                    return `export const ${name} = createProxy(${JSON.stringify(name)})`
                     })
                 
-                return importEsCodec + '\n' + body + '\n' + callableExports.join('\n')
+                return imports + '\n' + callableExports.join('\n')
             }
         }
     } satisfies VitePlugin
@@ -140,49 +77,101 @@ function server() {
                 imports.push(`import * as ESCodec from "astro-server-functions/es-codec.ts"`)
                 
                 const body = dedent`
-                const idToStreamMap = new Map
+                const iota = createReverseCounter()
                 
                 async function get({ request }) {
                     if (request.headers.has("Upgrade") === false || globalThis?.Deno?.upgradeWebSocket === undefined)
                         return new Response('Method Not Allowed', { status: 405 })
                     
                     const { socket, response } = Deno.upgradeWebSocket(request)
+                    const { encode, decode } =
+                        ESCodec.createCodec([
+                            {
+                                name: "URL",
+                                when  (x   ) { return x.constructor === URL },
+                                encode(url ) { return url.href },
+                                decode(href) { return new URL(href) }
+                            },
+                            {
+                                name: "RS",
+                                when  (x) { return x.constructor === ReadableStream },
+                                encode(stream) {
+                                    const streamId = iota()
+                                    stream.pipeTo(new WritableStream({
+                                        async write(chunk) {
+                                            socket.send(encode([ "enqueue", streamId, chunk ]))
+                                        },
+                                        async close() {
+                                            socket.send(encode([ "close", streamId ]))
+                                        }
+                                    }))
+                                    return streamId
+                                },
+                                decode(streamId) {
+                                    return new ReadableStream({
+                                        async start(controller) {
+                                            socket.addEventListener("message", listenerForChunks)
+                                            async function listenerForChunks({ data }) {
+                                                const [ type, id, value ] = decode(data)
+                                                if (type === "enqueue" && id === streamId) {
+                                                    controller.enqueue(value)
+                                                }
+                                                if (type === "close" && id === streamId) {
+                                                    controller.close();
+                                                    socket.removeEventListener("message", listenerForChunks)
+                                                }
+                                            }
+                                        }
+                                    })
+                                }
+                            },
+                            {
+                                name: "WS",
+                                when(x) { return x.constructor === WritableStream },
+                                encode(stream) {
+                                    const streamId = iota()
+                                    const writer = stream.getWriter()
+                                    socket.addEventListener("message", listenerForChunks)
+                                    return streamId
+                                    async function listenerForChunks({ data }) {
+                                        const [ type, id, value ] = decode(data)
+                                        if (type === "enqueue" && id === streamId) {
+                                            writer.write(value)
+                                        }
+                                        if (type === "close" && id === streamId) {
+                                            writer.close();
+                                            socket.removeEventListener("message", listenerForChunks)
+                                        }
+                                    }
+                                },
+                                decode(streamId) {
+                                    return new WritableStream({
+                                        async write(chunk) {
+                                            socket.send(encode([ "enqueue", streamId, chunk ]))
+                                        },
+                                        async close() {
+                                            socket.send(encode([ "close", streamId ]))
+                                        }
+                                    })
+                                }
+                            }
+                        ])
                     
                     socket.onmessage = async ({ data }) => {
-                        const message = ESCodec.decode(data)
-                        
+                        const message = decode(data)
                         if (message[0] === "call") {
                             const [ _, callId, funName, args ] = message
                             const result = await serverFunctions[funName].apply(null, args)
-                            socket.send(ESCodec.encode([ "result", callId, result ]))
-                        }
-                        
-                        if (message[0] === "call with stream") {
-                            const [ _, callId, funName, streamId ] = message
-                            const { readable, writable } = new TransformStream
-                            idToStreamMap.set(streamId, writable)
-                            const result = await serverFunctions[funName](readable)
-                            socket.send(ESCodec.encode([ "result", callId, result ]))
-                        }
-
-                        if (message[0] === "enqueue") {
-                            const [ _, streamId, value ] = message
-                            const writable = idToStreamMap.get(streamId)
-                            const writer = writable.getWriter()
-                            writer.write(value)
-                            writer.releaseLock()
-                        }
-
-                        if (message[0] === "close") {
-                            const [ _, streamId ] = message
-                            const writable = idToStreamMap.get(streamId)
-                            const writer = writable.getWriter()
-                            writer.close()
-                            writer.releaseLock()
+                            socket.send(encode([ "result", callId, result ]))
                         }
                     }
                     
                     return response
+                }
+                
+                function createReverseCounter() {
+                    let count = -1
+                    return () => count--
                 }`
                 
                 exports.push(`export const page = () => ({ get })`)

@@ -1,5 +1,5 @@
 <script>
-	import { sendStreamToServer } from "../serverfunctions"
+	import { sendStreamToServer, sendUrlToServer, sendFileToServer } from "../serverfunctions"
 	
 	const readable = new ReadableStream({
 		start(controller) {
@@ -13,5 +13,18 @@
 	})
 	
 	console.log(await sendStreamToServer(readable))
+
+	console.log(await sendUrlToServer(new URL("https://example.com")))
+
+	document.querySelector("input").addEventListener("change", async (event) => {
+		const file = event.target.files[0]
+		console.log(await sendFileToServer({
+			name: file.name,
+			type: file.type,
+			size: file.size,
+			lastModified: file.lastModified,
+			stream: file.stream()
+		}))
+	})
 </script>
-<h1></h1>
+<input type="file"></input>
