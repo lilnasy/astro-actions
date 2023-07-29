@@ -3,16 +3,19 @@ import type { AstroIntegration, ViteUserConfig } from 'astro'
 
 type VitePlugin = NonNullable<ViteUserConfig['plugins']>[number]
 
+const SERVER_FUNCTIONS_ROUTE_PATH      = '/_sf' as const
+const SERVER_FUNCTIONS_ROUTE_MODULE_ID = '\0@astro-page:_sf' as const
+const RENDERERS_MODULE_ID              = '@astro-renderers'
+const MIDDLEWARE_MODULE_ID             = '@astro-middleware'
+
 let buildingFor : 'client' | 'server'
-const serverFunctionsHostRoutePath = "/_sf"
-const serverFunctionsHostRouteId = `\0@astro-page:_sf` as const
 let serverFunctionsModuleId : string
 
 export default {
     name: 'server-functions',
     hooks: {
         'astro:config:setup' ({ injectRoute, config }) {
-            injectRoute({ pattern: serverFunctionsHostRoutePath, entryPoint: '_sf' })
+            injectRoute({ pattern: SERVER_FUNCTIONS_ROUTE_PATH, entryPoint: '_sf' })
             
             const serverPlugin = server()
             const clientPlugin = client()
@@ -21,16 +24,19 @@ export default {
             plugins.push({
                 name: 'server-functions/vite',
                 load(...args) {
-                    if (buildingFor === 'server') return serverPlugin.load.apply(this, args)
+                    if (buildingFor === 'server') return serverPlugin.load.apply(this, args as [typeof args[0]])
                 },
                 transform(...args) {
-                    if (buildingFor === 'client') return clientPlugin.transform.apply(this, args)
+                    if (buildingFor === 'client') return clientPlugin.transform.apply(this, args as [typeof args[0], typeof args[1]])
                 }
             })
         },
         'astro:config:done' ({ config }) {
             console.log('config done')
             serverFunctionsModuleId = config.srcDir.pathname + 'serverfunctions'
+            
+            // srcDir on windows is "/E:/workspaces/astro-website/src" (extra slash at the start)
+            if (globalThis?.process?.platform === 'win32') serverFunctionsModuleId = serverFunctionsModuleId.slice(1)
         },
         'astro:build:setup' ({ target }) {
             console.log('build setup', target)
@@ -42,7 +48,8 @@ export default {
 function client() {
     return {
         name: 'server-functions/vite/client',
-        async transform(code, id) {
+        transform(code, id) {
+            console.log({ id, serverFunctionsModuleId })
             if (id.startsWith(serverFunctionsModuleId)) {
                 console.log('transforming client functions')
                 const [ _, exports ] = ESModuleLexer.parse(code)
@@ -64,128 +71,48 @@ function client() {
 function server() {    
     return {
         name: 'server-functions/vite/server',
-        async load(id, options) {
-            if (id === serverFunctionsHostRouteId) {
-                console.log('loading custom module')
-                
-                const imports: string[] = []
-                const exports: string[] = []
-                const RENDERERS_MODULE_ID = '@astro-renderers'
-                const MIDDLEWARE_MODULE_ID = '@astro-middleware'
-                
-                imports.push(`import * as serverFunctions from ` + JSON.stringify(serverFunctionsModuleId))
-                imports.push(`import * as ESCodec from "astro-server-functions/es-codec.ts"`)
+        async load(id) {
+            if (id === SERVER_FUNCTIONS_ROUTE_MODULE_ID) {
+                console.log('loading server module')
                 
                 const body = dedent`
-                const iota = createReverseCounter()
-                
                 async function get({ request }) {
                     if (request.headers.has("Upgrade") === false || globalThis?.Deno?.upgradeWebSocket === undefined)
                         return new Response('Method Not Allowed', { status: 405 })
                     
                     const { socket, response } = Deno.upgradeWebSocket(request)
-                    const { encode, decode } =
-                        ESCodec.createCodec([
-                            {
-                                name: "URL",
-                                when  (x   ) { return x.constructor === URL },
-                                encode(url ) { return url.href },
-                                decode(href) { return new URL(href) }
-                            },
-                            {
-                                name: "RS",
-                                when  (x) { return x.constructor === ReadableStream },
-                                encode(stream) {
-                                    const streamId = iota()
-                                    stream.pipeTo(new WritableStream({
-                                        async write(chunk) {
-                                            socket.send(encode([ "enqueue", streamId, chunk ]))
-                                        },
-                                        async close() {
-                                            socket.send(encode([ "close", streamId ]))
-                                        }
-                                    }))
-                                    return streamId
-                                },
-                                decode(streamId) {
-                                    return new ReadableStream({
-                                        async start(controller) {
-                                            socket.addEventListener("message", listenerForChunks)
-                                            async function listenerForChunks({ data }) {
-                                                const [ type, id, value ] = decode(data)
-                                                if (type === "enqueue" && id === streamId) {
-                                                    controller.enqueue(value)
-                                                }
-                                                if (type === "close" && id === streamId) {
-                                                    controller.close();
-                                                    socket.removeEventListener("message", listenerForChunks)
-                                                }
-                                            }
-                                        }
-                                    })
-                                }
-                            },
-                            {
-                                name: "WS",
-                                when(x) { return x.constructor === WritableStream },
-                                encode(stream) {
-                                    const streamId = iota()
-                                    const writer = stream.getWriter()
-                                    socket.addEventListener("message", listenerForChunks)
-                                    return streamId
-                                    async function listenerForChunks({ data }) {
-                                        const [ type, id, value ] = decode(data)
-                                        if (type === "enqueue" && id === streamId) {
-                                            writer.write(value)
-                                        }
-                                        if (type === "close" && id === streamId) {
-                                            writer.close();
-                                            socket.removeEventListener("message", listenerForChunks)
-                                        }
-                                    }
-                                },
-                                decode(streamId) {
-                                    return new WritableStream({
-                                        async write(chunk) {
-                                            socket.send(encode([ "enqueue", streamId, chunk ]))
-                                        },
-                                        async close() {
-                                            socket.send(encode([ "close", streamId ]))
-                                        }
-                                    })
-                                }
-                            }
-                        ])
                     
                     socket.onmessage = async ({ data }) => {
-                        const message = decode(data)
+                        const message = decode(data, socket)
                         if (message[0] === "call") {
                             const [ _, callId, funName, args ] = message
                             const result = await serverFunctions[funName].apply(null, args)
-                            socket.send(encode([ "result", callId, result ]))
+                            socket.send(encode([ "result", callId, result ], socket))
                         }
                     }
                     
                     return response
-                }
-                
-                function createReverseCounter() {
-                    let count = -1
-                    return () => count--
                 }`
                 
-                exports.push(`export const page = () => ({ get })`)
+                const imports = new Array<string>
+                const exports = new Array<string>
                 
+                imports.push(`import { encode, decode } from "astro-server-functions/es-codec.ts"`)
+                imports.push(`import * as serverFunctions from "${serverFunctionsModuleId}"`)
                 imports.push(`import { renderers } from "${RENDERERS_MODULE_ID}"`)
-                exports.push(`export { renderers }`)
                 
                 const middlewareModule = await this.resolve(MIDDLEWARE_MODULE_ID)
+                
                 if (middlewareModule) {
                     imports.push(`import * as middleware from "${middlewareModule.id}"`)
                     exports.push(`export { middleware }`)
                 }
                 
+                exports.push(`export { renderers }`)
+                exports.push(`export const page = () => ({ get })`)
+                
                 const code = imports.join('\n') + body + exports.join('\n')
+                
                 return { code }
             }
         }
