@@ -10,8 +10,8 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "2.9.0",
+    "astro": "2.9.6",
     "astro-server-functions": "workspace:*",
-    "@astrojs/deno": "4.2.0"
+    "@astrojs/deno": "4.3.0"
   }
 }
