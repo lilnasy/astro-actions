@@ -8,6 +8,9 @@ This is used by both the client and the server runtime.
 import { defineContext, defineExtension } from "es-codec"
 import iota from "./iota.ts"
 
+// @ts-ignore who cares
+const AsyncFunction = (async x => x).constructor
+
 export const { encode, decode } = defineContext<WebSocket>().createCodec([
     defineExtension({
         name: "URL",
@@ -73,6 +76,36 @@ export const { encode, decode } = defineContext<WebSocket>().createCodec([
                 close() {
                     ws.send(encode([ "close", streamId ], ws ))
                 }
+            })
+        }
+    }),
+    defineExtension({
+        name: "AF",
+        when(x): x is Function {
+            return x?.constructor === AsyncFunction
+        },
+        encode(fun, ws) {
+            const funId = iota()
+            ws.addEventListener("message", async function listenForInvocations ({ data }) {
+                const [ type, incomingFunId, callId, args ] = decode(data, ws) as any
+                if (type === "apply" && incomingFunId === funId) {
+                    const result = await fun.apply(null, args)
+                    ws.send(encode([ "apply result", callId, result ], ws))
+                }
+            })
+            return funId
+        },
+        decode(funId, ws) {
+            return (...args: any[]) => new Promise(resolve => {
+                const callId = iota()
+                ws.send(encode([ "apply", funId, callId, args ], ws))
+                ws.addEventListener("message", function listenForResult({ data }) {
+                    const [ type, incomingCallId, result ] = decode(data, ws) as any
+                    if (type === "apply result" && callId === incomingCallId) {
+                        ws.removeEventListener("message", listenForResult)
+                        resolve(result)
+                    }
+                })
             })
         }
     })

@@ -27,3 +27,7 @@ export async function sendFileToServer(x : File) {
     for await (const value of stream as any) console.log(value)
     return "received"
 }
+
+export async function sendFunctionToServer(clientFunction : (input : number) => Promise<void>) {
+    setInterval(() => clientFunction(Math.random()), 2000)
+}

@@ -35,6 +35,7 @@ export default {
             console.log('config done')
             serverFunctionsModuleId = config.srcDir.pathname + 'serverfunctions'
             
+            // @ts-ignore process needs types/node, i dont want to bother
             // srcDir on windows is "/E:/workspaces/astro-website/src" (extra slash at the start)
             if (globalThis?.process?.platform === 'win32') serverFunctionsModuleId = serverFunctionsModuleId.slice(1)
         },
@@ -49,7 +50,6 @@ function client() {
     return {
         name: 'server-functions/vite/client',
         transform(code, id) {
-            console.log({ id, serverFunctionsModuleId })
             if (id.startsWith(serverFunctionsModuleId)) {
                 console.log('transforming client functions')
                 const [ _, exports ] = ESModuleLexer.parse(code)

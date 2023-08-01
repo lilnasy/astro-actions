@@ -1,5 +1,5 @@
 <script>
-	import { sendStreamToServer, sendUrlToServer, sendFileToServer } from "../serverfunctions"
+	import { sendStreamToServer, sendUrlToServer, sendFileToServer, sendFunctionToServer } from "../serverfunctions"
 	
 	const readable = new ReadableStream({
 		start(controller) {
@@ -26,5 +26,7 @@
 			stream: file.stream()
 		}))
 	})
+
+	sendFunctionToServer(async (x : number) => { console.log(x) })
 </script>
 <input type="file"></input>
