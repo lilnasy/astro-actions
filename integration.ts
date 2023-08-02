@@ -11,40 +11,46 @@ const MIDDLEWARE_MODULE_ID             = '@astro-middleware'
 let buildingFor : 'client' | 'server'
 let serverFunctionsModuleId : string
 
-export default {
-    name: 'server-functions',
-    hooks: {
-        'astro:config:setup' ({ injectRoute, config }) {
-            injectRoute({ pattern: SERVER_FUNCTIONS_ROUTE_PATH, entryPoint: '_sf' })
+export default () => {
+    
+    const serverPlugin = server()
+    const clientPlugin = client()
+    
+    return {
+        name: 'server-functions',
+        hooks: {
+            'astro:config:setup' ({ injectRoute, config }) {
+                console.log('astro:config:setup')
+                
+                injectRoute({ pattern: SERVER_FUNCTIONS_ROUTE_PATH, entryPoint: '_sf' })
+                
+                const plugins = config.vite.plugins ??= []
+                
+                plugins.push({
+                    name: 'server-functions/vite',
+                    load(...args) {
+                        if (buildingFor === 'server') return serverPlugin.load.apply(this, args as [typeof args[0]])
+                    },
+                    transform(...args) {
+                        if (buildingFor === 'client') return clientPlugin.transform.apply(this, args as [typeof args[0], typeof args[1]])
+                    }
+                })
+            },
+            'astro:config:done' ({ config }) {
+                console.log('astro:config:done')
+                serverFunctionsModuleId = config.srcDir.pathname + 'serverfunctions'
             
-            const serverPlugin = server()
-            const clientPlugin = client()
-            
-            const plugins = config.vite.plugins ??= []
-            plugins.push({
-                name: 'server-functions/vite',
-                load(...args) {
-                    if (buildingFor === 'server') return serverPlugin.load.apply(this, args as [typeof args[0]])
-                },
-                transform(...args) {
-                    if (buildingFor === 'client') return clientPlugin.transform.apply(this, args as [typeof args[0], typeof args[1]])
-                }
-            })
-        },
-        'astro:config:done' ({ config }) {
-            console.log('config done')
-            serverFunctionsModuleId = config.srcDir.pathname + 'serverfunctions'
-            
-            // @ts-ignore process needs types/node, i dont want to bother
-            // srcDir on windows is "/E:/workspaces/astro-website/src" (extra slash at the start)
-            if (globalThis?.process?.platform === 'win32') serverFunctionsModuleId = serverFunctionsModuleId.slice(1)
-        },
-        'astro:build:setup' ({ target }) {
-            console.log('build setup', target)
-            buildingFor = target
+                // @ts-ignore process needs types/node, i dont want to bother
+                // srcDir on windows is "/E:/workspaces/astro-website/src" (extra slash at the start)
+                if (globalThis?.process?.platform === 'win32') serverFunctionsModuleId = serverFunctionsModuleId.slice(1)
+            },
+            'astro:build:setup' ({ target }) {
+                console.log('astro:build:setup', target)
+                buildingFor = target
+            }
         }
-    }
-} satisfies AstroIntegration
+    } satisfies AstroIntegration
+}
 
 function client() {
     return {
@@ -52,10 +58,13 @@ function client() {
         transform(code, id) {
             if (id.startsWith(serverFunctionsModuleId)) {
                 console.log('transforming client functions')
+                
                 const [ _, exports ] = ESModuleLexer.parse(code)
                 
+                console.log("transforming functions to remote calls for the browser: " +  exports.map(({ n }) => n).join(', '))
+                
                 const imports = `import { createProxy } from "astro-server-functions/client-runtime.ts"`
-
+                
                 const callableExports =
                     exports.map(({ n: name }) => {
                         if (name === 'default') return `export default createProxy(${JSON.stringify(name)})`
