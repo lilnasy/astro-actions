@@ -1,9 +1,9 @@
 {
   "name": "astro-server-functions",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "",
   "main": "./integration.ts",
-  "include": [ "LICENSE", "es-codec.ts", "integration.ts" ],
+  "include": [ "LICENSE", "es-codec.ts", "integration.ts", "client-runtime.ts", "server-runtime.ts", "iota.ts" ],
   "keywords": [],
   "author": "Arsh",
   "license": "Public Domain",
