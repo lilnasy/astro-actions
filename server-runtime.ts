@@ -12,8 +12,13 @@ export const get : APIRoute = ({ request }) => {
         const message = decode(data, socket) as any
         if (message[0] === "call") {
             const [ _, callId, funName, args ] = message
-            const result = await serverFunctions[funName].apply(null, args)
-            socket.send(encode([ "result", callId, result ], socket))
+            try {
+                const result = await serverFunctions[funName].apply(null, args)
+                socket.send(encode([ "result", callId, result ], socket))
+            }
+            catch {
+                socket.send(encode([ "result", callId, undefined ], socket))
+            }
         }
     }
     

@@ -42,6 +42,10 @@ export default function () {
                             
                             return imports + '\n' + callableExports.join('\n')
                         }
+                    },
+                    async configureServer({ httpServer, ssrLoadModule }) {
+                        // console.log(await ssrLoadModule('E:/workspaces/astro-server-functions/server-runtime.ts'))
+                        // httpServer.on('upgrade', r => r)
                     }
                 })
             },
