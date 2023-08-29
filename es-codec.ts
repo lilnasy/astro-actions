@@ -6,6 +6,7 @@ This is used by both the client and the server runtime.
 */
 
 import { defineContext, defineExtension } from "es-codec"
+// @ts-expect-error .ts extension
 import iota from "./iota.ts"
 
 // @ts-ignore who cares

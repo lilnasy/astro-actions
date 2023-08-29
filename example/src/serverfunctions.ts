@@ -14,6 +14,7 @@ export async function sendUrlToServer(x : URL) {
     console.log(x)
     return x
 }
+
 type File = {
     name: string,
     type: string,
@@ -21,6 +22,7 @@ type File = {
     lastModified: number,
     stream: ReadableStream<Uint8Array>
 }
+
 export async function sendFileToServer(x : File) {
     console.log(x)
     const stream = x.stream.pipeThrough(new TextDecoderStream())

@@ -1,4 +1,6 @@
+// @ts-expect-error .ts extension
 import { encode, decode } from "./es-codec.ts"
+// @ts-expect-error .ts extension
 import iota from "./iota.ts"
 
 const url = new URL(location.href)

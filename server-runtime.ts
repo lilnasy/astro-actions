@@ -1,12 +1,17 @@
+// @ts-ignore .ts extension
 import { encode, decode } from "./es-codec.ts"
-import * as serverFunctions from "server:functions"
+// @ts-ignore .ts extension
+import * as serverFunctions from "./implementation-stand-in.ts"
 import type { APIRoute } from "astro"
 
-export const get : APIRoute = ({ request }) => {
+export const GET : APIRoute = ({ request }) => {
     if (request.headers.has("Upgrade") === false || globalThis?.Deno?.upgradeWebSocket === undefined)
         return new Response('Method Not Allowed', { status: 405 })
-    
-    const { socket, response } = Deno.upgradeWebSocket(request)
+
+    // @ts-expect-error - Deno is not in the types
+    const { upgradeWebSocket } = Deno as { upgradeWebSocket: (request: Request) => { socket: WebSocket, response: Response } }
+
+    const { socket, response } = upgradeWebSocket(request)
     
     socket.onmessage = async ({ data }) => {
         const message = decode(data, socket) as any

@@ -10,9 +10,9 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/deno": "4.3.0",
-    "@astrojs/node": "^5.3.2",
-    "astro": "file:../../astro/packages/astro",
+    "@astrojs/deno": "5.0.0-rc.1",
+    "@astrojs/node": "6.0.0-rc.1",
+    "astro": "3.0.0-rc.8",
     "astro-server-functions": "workspace:*"
   }
 }
