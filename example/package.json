@@ -1,5 +1,4 @@
 {
-  "name": "flaky-fusion",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -10,8 +9,9 @@
     "astro": "astro"
   },
   "dependencies": {
-    "astro": "2.10.0",
-    "astro-server-functions": "workspace:*",
-    "@astrojs/deno": "4.3.0"
+    "@astrojs/deno": "5",
+    "@astrojs/node": "6",
+    "astro": "3",
+    "astro-server-functions": "workspace:*"
   }
 }
