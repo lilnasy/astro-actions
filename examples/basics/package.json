@@ -1,0 +1,17 @@
+{
+    "name": "basics",
+    "private": "true",
+    "type": "module",
+    "scripts": {
+      "dev": "astro dev",
+      "start": "astro dev",
+      "build": "astro build",
+      "preview": "astro preview",
+      "astro": "astro"
+    },
+    "dependencies": {
+      "@astrojs/node": "6",
+      "astro": "3",
+      "astro-server-functions": "workspace:*"
+    }
+  }

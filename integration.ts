@@ -11,7 +11,7 @@ export default function (options: Partial<ServerFunctionsOptions> = {}): AstroIn
                 
                 injectRoute({
                     pattern   : '/_sf',
-                    entryPoint: getEntrypoint({ mode, serialization, target: 'browser' })
+                    entryPoint: getEntrypoint({ mode, serialization, target: 'server' })
                 })
                 
                 updateConfig({
@@ -69,7 +69,7 @@ function getEntrypoint({ mode, serialization, target } : ServerFunctionsOptions 
     if (target === 'dev') {
         if (mode === 'fetch'     && serialization === 'es-codec') return 'astro-server-functions/runtime/fetch.codec.endpoint.ts'
         if (mode === 'fetch'     && serialization === 'JSON')     return 'astro-server-functions/runtime/fetch.json.endpoint.ts'
-        if (mode === 'websocket' && serialization === 'es-codec') return 'astro-server-functions/runtime/websocket.codec.handler.ts'
+        if (mode === 'websocket' && serialization === 'es-codec') return 'astro-server-functions/runtime/websocket.codec.dev.ts'
         if (mode === 'websocket' && serialization === 'JSON')     throw new Error(`JSON serialization is not supported in websocket mode.`)
         throw new Error(`Unsupported combination of mode and serialization: ${mode} and ${serialization}.`)
     }
@@ -90,21 +90,8 @@ function createVitePlugin({ config, logger, mode, serialization }: VitePluginOpt
 
     const vitePlugin: VitePlugin = {
         name: 'astro-server-functions',
-        async configureServer(server) {
-            // const result = await server.pluginContainer.resolveId('astro-server-functions/runtime/websocket.dev.ts')
-            // console.log({ id: result!.id?.replaceAll('/','\\') })
-            // const { default: devRuntime } = await server.ssrLoadModule(result!.id) as typeof import('./runtime/websocket.dev.ts')
-            // devRuntime(server.httpServer!)
-        },
         resolveId(source, importer) {
-            // if (source === './websocket.common.ts' && importer?.endsWith('index.html'))
-            //     return this.resolve('./websocket.common.ts', 'E:/home/astro-server-functions/runtime/websocket.dev.ts')
-
-            // if (source === './functions-stand-in.ts') return this.resolve(config.srcDir.pathname + 'serverfunctions')
-            
-            // // viteDevServer.ssrLoadModule (in astro:server:setup) needs some help
-            // if (source.startsWith('./') && importer?.endsWith('index.html'))
-            //     return this.resolve(`astro-server-functions/runtime/${source.slice(2)}`, importer)
+            if (source === 'server:functions') return this.resolve(config.srcDir.pathname + 'serverfunctions', importer)
         },
         async transform(code, id, options) {
             // @ts-expect-error - allow it to fail at runtime if resolution fails
@@ -118,7 +105,7 @@ function createVitePlugin({ config, logger, mode, serialization }: VitePluginOpt
 
                 logger.info(`Transforming ${exports.length} functions to server functions: ${exports.map(exp => exp.n).join(', ')}.`)
                 
-                const imports = `import { createProxy } from "astro-server-functions/runtime/websocket.browser.ts"`
+                const imports = `import { createProxy } from "${getEntrypoint({ mode, serialization, target: 'browser'})}"`
                 
                 const callableExports =
                     exports.map(({ n: name }) => {  

@@ -1,6 +1,6 @@
-import { encode, decode } from "./codec.websocket.ts"
 // @ts-expect-error
 import * as serverFunctions from "server:functions"
+import { encode, decode } from "./codec.websocket.ts"
 
 export function handleWebSocket(socket: Omit<WebSocket, 'dispatchEvent'>) {
     socket.binaryType = 'arraybuffer'
