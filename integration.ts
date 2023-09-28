@@ -1,68 +1,127 @@
 import ESModuleLexer from 'es-module-lexer'
-import type { AstroConfig, AstroIntegration, AstroIntegrationLogger } from 'astro'
-import type { Plugin as VitePlugin } from "vite"
+import type { Plugin as VitePlugin } from 'vite'
+import type { AstroConfig, AstroUserConfig, AstroIntegration, AstroIntegrationLogger } from 'astro'
 
-export default function (): AstroIntegration {
+export default function (options: Partial<ServerFunctionsOptions> = {}): AstroIntegration {
+    const { mode = 'fetch', serialization = 'es-codec' } = options
     return {
-        name: 'server-functions',
+        name: 'astro-server-functions',
         hooks: {
-            'astro:config:setup' ({ command, config, injectRoute, logger }) {
+            'astro:config:setup' ({ command, config, injectRoute, updateConfig, logger }) {
                 
                 injectRoute({
                     pattern   : '/_sf',
-                    entryPoint: 'astro-server-functions/runtime/deno.ts'
+                    entryPoint: getEntrypoint({ mode, serialization, target: 'browser' })
                 })
-
-                const plugins = config.vite.plugins ??= []
                 
-                plugins.push(createVitePLugin({ config, command, logger }))
-            },
-            async 'astro:server:setup' ({ server }) {
-                const devRuntime = await server.ssrLoadModule('astro-server-functions/runtime/dev.ts')
-                devRuntime.default(server.httpServer)
+                updateConfig({
+                    vite: {
+                        plugins: [ createVitePlugin({ config, command, logger, mode, serialization }) ]
+                    }
+                } satisfies AstroUserConfig)
             }
         }
     }
 }
 
-interface VitePluginOptions {
+interface ServerFunctionsOptions {
+    /**
+     * The API used by the browser to communicate with the server.
+     * 
+     * When `"fetch"` is selected, the browser will send HTTP POST requests to the server.
+     * You can only send and receive static data in this mode. To send streams and promises, switch to websocket mode.
+     * 
+     * When `"websocket"` is selected, the browser will establish a websocket connection with the server and make all server function calls over it.
+     * 
+     * You can send and receive a wide variety of data types - including `Promise`, `ReadableStream`, `WritableStream`, `Request`, and `Response`.
+     * However, this mode is only usable with Deno.
+     */
+    mode: 'fetch' | 'websocket'
+    
+    /**
+     * The format used by server functions to send data over the network.
+     * 
+     * When `"es-codec"` is selected, you will be able to send more types of data - including `BigInt`, `Map`, `Set`, `TypedArray`, and `ArrayBuffer`.
+     * However, you will be sending slightly more javascript to the browser.
+     * 
+     * When `"JSON"` is selected, you will be sending very little javascript to the browser but data types will be limited to `number`, `string`, `Array`, and plain objects.
+     */
+    serialization: 'es-codec' | 'JSON'
+}
+
+function getEntrypoint({ mode, serialization, target } : ServerFunctionsOptions & { target: 'server' | 'browser' | 'dev' }) {
+    if (target === 'server') {
+        if (mode === 'fetch'     && serialization === 'es-codec') return 'astro-server-functions/runtime/fetch.codec.endpoint.ts'
+        if (mode === 'fetch'     && serialization === 'JSON')     return 'astro-server-functions/runtime/fetch.json.endpoint.ts'
+        if (mode === 'websocket' && serialization === 'es-codec') return 'astro-server-functions/runtime/websocket.codec.endpoint.ts'
+        if (mode === 'websocket' && serialization === 'JSON')     throw new Error(`JSON serialization is not supported in websocket mode.`)
+        throw new Error(`Unsupported combination of mode and serialization: ${mode} and ${serialization}.`)
+    }
+    
+    if (target === 'browser') {
+        if (mode === 'fetch'     && serialization === 'es-codec') return 'astro-server-functions/runtime/fetch.codec.browser.ts'
+        if (mode === 'fetch'     && serialization === 'JSON')     return 'astro-server-functions/runtime/fetch.json.browser.ts'
+        if (mode === 'websocket' && serialization === 'es-codec') return 'astro-server-functions/runtime/websocket.browser.ts'
+        if (mode === 'websocket' && serialization === 'JSON')     throw new Error(`JSON serialization is not supported in websocket mode.`)
+        throw new Error(`Unsupported combination of mode and serialization: ${mode} and ${serialization}.`)
+    }
+
+    if (target === 'dev') {
+        if (mode === 'fetch'     && serialization === 'es-codec') return 'astro-server-functions/runtime/fetch.codec.endpoint.ts'
+        if (mode === 'fetch'     && serialization === 'JSON')     return 'astro-server-functions/runtime/fetch.json.endpoint.ts'
+        if (mode === 'websocket' && serialization === 'es-codec') return 'astro-server-functions/runtime/websocket.codec.handler.ts'
+        if (mode === 'websocket' && serialization === 'JSON')     throw new Error(`JSON serialization is not supported in websocket mode.`)
+        throw new Error(`Unsupported combination of mode and serialization: ${mode} and ${serialization}.`)
+    }
+
+    throw new Error
+}
+
+
+interface VitePluginOptions extends ServerFunctionsOptions {
     command : 'dev' | 'build' | 'preview'
     config  : AstroConfig
     logger  : AstroIntegrationLogger
 }
 
-function createVitePLugin({ config, command, logger }: VitePluginOptions): VitePlugin {
+function createVitePlugin({ config, logger, mode, serialization }: VitePluginOptions): VitePlugin {
     
     let serverFunctionsModuleId : string
 
     const vitePlugin: VitePlugin = {
-        name: 'server-functions/vite',
-        async resolveId(source, importer) {
+        name: 'astro-server-functions',
+        async configureServer(server) {
+            // const result = await server.pluginContainer.resolveId('astro-server-functions/runtime/websocket.dev.ts')
+            // console.log({ id: result!.id?.replaceAll('/','\\') })
+            // const { default: devRuntime } = await server.ssrLoadModule(result!.id) as typeof import('./runtime/websocket.dev.ts')
+            // devRuntime(server.httpServer!)
+        },
+        resolveId(source, importer) {
+            // if (source === './websocket.common.ts' && importer?.endsWith('index.html'))
+            //     return this.resolve('./websocket.common.ts', 'E:/home/astro-server-functions/runtime/websocket.dev.ts')
+
+            // if (source === './functions-stand-in.ts') return this.resolve(config.srcDir.pathname + 'serverfunctions')
+            
+            // // viteDevServer.ssrLoadModule (in astro:server:setup) needs some help
+            // if (source.startsWith('./') && importer?.endsWith('index.html'))
+            //     return this.resolve(`astro-server-functions/runtime/${source.slice(2)}`, importer)
+        },
+        async transform(code, id, options) {
             // @ts-expect-error - allow it to fail at runtime if resolution fails
             serverFunctionsModuleId ??= (await this.resolve(config.srcDir.pathname + 'serverfunctions')).id
-            
-            // viteDevServer.ssrLoadModule (in astro:server:setup) needs some help
-            if (command === 'dev' && importer?.endsWith('index.html')) {
-                if (source === './es-codec.ts')           return this.resolve('astro-server-functions/runtime/es-codec.ts')
-                if (source === './iota.ts')               return this.resolve('astro-server-functions/runtime/iota.ts')
-                if (source === './server-common.ts')      return this.resolve('astro-server-functions/runtime/server-common.ts')
-                if (source === './functions-stand-in.ts') return this.resolve(config.srcDir.pathname + 'serverfunctions')
-            }
-        },
-        transform(code, id, options) {
+
             // during build, options is { ssr: true } for code that runs on the server, and undefined otherwise
             // during dev, options is { ssr: true } for code that runs on the server, and { ssr: false } otherwise
             // transformation of server functions to remote calls is only intended for the client
             if (options?.ssr !== true && id === serverFunctionsModuleId) {
                 const [ _, exports ] = ESModuleLexer.parse(code)
 
-                logger.info(`transforming ${exports.length} functions to remote calls for the browser`)
-                exports.forEach(exp => logger.info(exp.n))
+                logger.info(`Transforming ${exports.length} functions to server functions: ${exports.map(exp => exp.n).join(', ')}.`)
                 
-                const imports = `import { createProxy } from "astro-server-functions/runtime/browser.ts"`
+                const imports = `import { createProxy } from "astro-server-functions/runtime/websocket.browser.ts"`
                 
                 const callableExports =
-                    exports.map(({ n: name }) => {
+                    exports.map(({ n: name }) => {  
                         if (name === 'default') return `export default createProxy("${name}")`
                         else                    return `export const ${name} = createProxy("${name}")`
                     })

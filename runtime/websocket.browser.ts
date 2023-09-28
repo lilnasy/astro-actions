@@ -1,18 +1,17 @@
-import { encode, decode } from "./es-codec.ts"
+import { encode, decode } from "./codec.websocket.ts"
 import iota from "./iota.ts"
 
 const url = new URL(location.href)
 url.pathname = "/_sf"
 url.protocol = url.protocol.replace('http', 'ws')
 const ws = new Promise<WebSocket>(resolve => {
-    const ws = new WebSocket(url, 'protocol-x')
+    const ws = new WebSocket(url)
     ws.binaryType = "arraybuffer"
     ws.onopen = () => resolve(ws)
     ws.addEventListener("open", () => {})
 })
 
 export function createProxy(funName : string) {
-    // deno-lint-ignore no-async-promise-executor
     return (...args: any[]) => new Promise(async resolve => {
         const websocket = await ws
         const callId = iota()
