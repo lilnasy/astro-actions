@@ -14,7 +14,7 @@ const AsyncFunction = (async x => x).constructor
 // TODO: each event listener is decoding every message
 // leading to one message being decoded multiple times
 
-export const { encode, decode } = defineContext<WebSocket>().createCodec([
+export const { encode, decode } = defineContext<Omit<WebSocket, 'dispatchEvent'>>().createCodec([
     // whatwg url
     defineExtension({
         name: "URL",

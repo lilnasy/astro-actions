@@ -1,9 +1,10 @@
-import { encode, decode } from "./es-codec.ts"
-import * as serverFunctions from "./functions-stand-in.ts"
+// @ts-expect-error
+import * as serverFunctions from "server:functions"
+import { encode, decode } from "./codec.websocket.ts"
 
-export function handleWebSocket(socket: WebSocket) {
-    console.log(serverFunctions)
-    socket.onmessage = async ({ data }) => {
+export function handleWebSocket(socket: Omit<WebSocket, 'dispatchEvent'>) {
+    socket.binaryType = 'arraybuffer'
+    socket.onmessage = async ({ data } : { data : ArrayBuffer }) => {
         const message = decode(data, socket) as any
         if (message[0] === "call") {
             const [ _, callId, funName, args ] = message

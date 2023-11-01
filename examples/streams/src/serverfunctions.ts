@@ -1,6 +1,16 @@
+import { x } from "./lib/x.ts"
+
+export { x } from "./lib/x.ts"
+
 export async function f() {
     return "Hello from server functions!"
 }
+
+export async function y() {
+    return await x()
+}
+
+export const z = x
 
 export async function sendStreamToServer(readable : ReadableStream<string>) {
     
