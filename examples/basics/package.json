@@ -12,6 +12,6 @@
     "dependencies": {
       "@astrojs/node": "6",
       "astro": "3",
-      "astro-server-functions": "workspace:*"
+      "astro-server-actions": "workspace:*"
     }
   }

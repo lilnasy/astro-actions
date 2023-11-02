@@ -1,9 +1,9 @@
 import { defineConfig } from "astro/config"
-import sf from "astro-server-functions"
+import actions from "astro-server-actions"
 import node from "@astrojs/node"
 
 export default defineConfig({
-    integrations: [ sf() ],
+    integrations: [ actions() ],
     output: "server",
     adapter: node({ mode: 'standalone' }),
 })

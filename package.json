@@ -1,16 +1,20 @@
 {
-  "name": "astro-server-functions",
+  "name": "astro-server-actions",
   "version": "0.1.0",
   "description": "",
-  "main": "./integration.ts",
   "include": [ "LICENSE", "integration.ts", "runtime/" ],
+  "type": "module",
+  "exports": {
+    ".": "./integration.ts",
+    "./runtime/*": "./runtime/*",
+    "./client": { "types": "./runtime/client.d.ts" }
+  },
   "keywords": [],
   "author": "Arsh",
   "license": "Public Domain",
   "dependencies": {
     "es-codec": "0.5.0",
-    "es-module-lexer": "1.3.0",
-    "ws": "8"
+    "es-module-lexer": "1.3.0"
   },
   "devDependencies": {
     "@types/node": "20",

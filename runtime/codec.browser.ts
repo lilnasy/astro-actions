@@ -1,5 +1,7 @@
+import { encode, decode } from "es-codec"
+
 const fetchEndpoint = new URL(location.href)
-fetchEndpoint.pathname = "/_sf"
+fetchEndpoint.pathname = "/_action"
 
 export function createProxy(funName : string) {
     return async (...args: any[]) => await proxyImpl(funName, args)
@@ -8,7 +10,7 @@ export function createProxy(funName : string) {
 async function proxyImpl(funName : string, args: any[]) {
     const response = await fetch(fetchEndpoint, {
         method: "POST",
-        body: JSON.stringify([ funName, args ])
+        body: encode([ funName, args ])
     })
-    return await response.json()
+    return decode(await response.arrayBuffer())
 }
