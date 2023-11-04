@@ -12,4 +12,4 @@ export interface ServerActionsIntegrationOptions {
     serialization: 'es-codec' | 'JSON'
 }
 
-export interface AstroGlobalPartial extends Pick<APIContext, 'url' | 'request' | 'redirect' | 'cookies' | 'locals'> {}
+export interface AstroGlobalPartial extends Pick<APIContext, 'cookies' | 'locals'> {}

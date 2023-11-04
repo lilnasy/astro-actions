@@ -11,21 +11,6 @@ export const Astro: AstroGlobalPartial = {
         const ctx = astroGlobalStorage.getStore()
         if (ctx === undefined) throw new AccessedOutsideOfContext
         return ctx.locals
-    },
-    get redirect() {
-        const ctx = astroGlobalStorage.getStore()
-        if (ctx === undefined) throw new AccessedOutsideOfContext
-        return ctx.redirect
-    },
-    get request() {
-        const ctx = astroGlobalStorage.getStore()
-        if (ctx === undefined) throw new AccessedOutsideOfContext
-        return ctx.request
-    },
-    get url() {
-        const ctx = astroGlobalStorage.getStore()
-        if (ctx === undefined) throw new AccessedOutsideOfContext
-        return ctx.url
     }
 }
 

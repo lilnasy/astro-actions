@@ -6,6 +6,6 @@ import type { APIRoute } from "astro"
 
 export const POST : APIRoute = async (ctx) => {
     const [ id, args ] = decode(await ctx.request.arrayBuffer()) as any
-    const result = await astroGlobalStorage.run(ctx, async () => await actions[id](...args))
+    const result = await astroGlobalStorage.run(ctx, actions[id], ...args) as any
     return new Response(encode(result))
 }
