@@ -15,9 +15,10 @@
     "@types/react": "18",
     "@types/react-dom": "18",
     "astro": "3",
+    "astro-global": "1",
+    "astro-server-actions": "workspace:*",
     "react": "18",
-    "react-dom": "18",
-    "astro-server-actions": "workspace:*"
+    "react-dom": "18"
   },
   "devDependencies": {
     "typescript": "5"

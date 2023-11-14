@@ -1,6 +1,6 @@
 import * as User from "db/users.ts"
 import * as Token from "db/tokens.ts"
-import { Astro } from "astro:actions"
+import Astro from "astro:global"
 
 export async function generateChallenge(username: string, hostname: string): Promise<GenerateChallengeReturn> {
     const userDetails = User.read({ username })
@@ -16,7 +16,7 @@ export async function generateChallenge(username: string, hostname: string): Pro
             type: "create",
             rp: {
                 name: "Readable Relying Party Name",
-                id: hostname
+                id: import.meta.env.RELYING_PARTY_ID ?? hostname
             },
             /**
              * An ArrayBuffer, TypedArray, or DataView provided by the relying

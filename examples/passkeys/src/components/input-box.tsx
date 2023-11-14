@@ -1,5 +1,5 @@
 import { useState } from "react"
-import * as Actions from "../actions.ts"
+import * as Actions from "astro:actions"
 
 export default function () {
     const [ username, setUsername ] = useState("")
@@ -43,7 +43,6 @@ async function maybeLoginOrSignup(username: string, setOutput: React.Dispatch<Re
         catch (e: any) { return setOutput(e.message) }
 
         if (cred === null) return setOutput("This browser could not create a credential that macthes the given options")
-        console.log(cred)
         const pkCred = cred as PublicKeyCredential
         const response = pkCred.response as AuthenticatorAttestationResponse
         const { error, success } = await Actions.registerUser({
@@ -57,7 +56,7 @@ async function maybeLoginOrSignup(username: string, setOutput: React.Dispatch<Re
             }
         })
         if (error) return setOutput(error)
-        // return location.pathname = "/"
+        return location.pathname = "/"
     }
     
     else if (options.type === "get") /* login */ {

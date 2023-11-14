@@ -1,11 +1,10 @@
 // @ts-expect-error
-import * as actions from "actions:implementation"
+import * as actions from "astro-actions-internal:implementation"
 import { encode, decode } from "es-codec"
-import { astroGlobalStorage } from "./localstorage.ts"
 import type { APIRoute } from "astro"
 
 export const POST : APIRoute = async (ctx) => {
     const [ id, args ] = decode(await ctx.request.arrayBuffer()) as any
-    const result = await astroGlobalStorage.run(ctx, actions[id], ...args) as any
+    const result = await actions[id](...args)
     return new Response(encode(result))
 }

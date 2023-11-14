@@ -1,8 +1,12 @@
+/// <reference path="../.astro/types.d.ts" />
 /// <reference types="astro/client" />
-/// <reference types="astro-server-actions/client" />
+/// <reference types="../.astro/actions.d.ts" />
+/// <reference types="astro-global/client" />
+
+type Details = import("db/users.ts").Details
 
 namespace App {
     interface Locals {
-        user: Exclude<ReturnType<typeof import("db/users.ts").read>, symbol> | undefined
+        user: Details | undefined
     }
 }

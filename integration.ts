@@ -1,6 +1,9 @@
 import ESModuleLexer from 'es-module-lexer'
-import type { Plugin as VitePlugin } from 'vite'
-import type { AstroConfig, AstroUserConfig, AstroIntegration, AstroIntegrationLogger } from 'astro'
+import * as url from 'node:url'
+import * as path from 'node:path'
+import * as fs from 'node:fs'
+import dedent from './dedent.ts'
+import type { AstroConfig, AstroIntegration } from 'astro'
 import type { ServerActionsIntegrationOptions } from "./interface.ts"
 
 export default function (options: Partial<ServerActionsIntegrationOptions> = {}): AstroIntegration {
@@ -8,79 +11,107 @@ export default function (options: Partial<ServerActionsIntegrationOptions> = {})
     return {
         name: 'astro-server-actions',
         hooks: {
-            'astro:config:setup' ({ command, config, injectRoute, updateConfig, logger }) {
+            'astro:config:setup' ({ config: { srcDir, root }, injectRoute, updateConfig, logger }) {
+                
+                let actionsFilePath = ''
+                
+                for (const extension of ['ts', 'js', 'mjs', 'mts']) {
+                    const filePath = url.fileURLToPath(new URL('actions.' + extension, srcDir))
+                    if (fs.existsSync(filePath)) actionsFilePath = filePath.replaceAll("\\", "/")
+                    else continue
+                    break
+                }
+                
+                if (!actionsFilePath) return logger.error('No actions file found. Make sure you have an actions.ts file in your src directory.')
                 
                 injectRoute({
                     pattern   : '/_action',
-                    entryPoint: getEntrypoint({ serialization, target: 'server' })
+                    entryPoint:
+                        serialization === 'JSON'
+                            ? 'astro-server-actions/runtime/json.endpoint.ts'
+                            : 'astro-server-actions/runtime/codec.endpoint.ts',
                 })
                 
                 updateConfig({
                     vite: {
-                        plugins: [ createVitePlugin({ config, command, logger, serialization }) ]
+                        plugins: [{
+                            name: 'astro-actions',
+                            resolveId(id, _, { ssr }) {
+                                if (id === 'astro-actions-internal:implementation') return actionsFilePath
+                                if (id === 'astro:actions') {
+                                    if (ssr === true) return actionsFilePath
+                                    return 'fake module id to load astro actions'
+                                }
+                            },
+                            async load(id) {
+                                if (id === 'fake module id to load astro actions') {
+                                    const { code } = await this.load({ id: actionsFilePath })
+                                    const [ _, exports ] = ESModuleLexer.parse(code!)
+                                    
+                                    logger.info(`Transforming ${exports.length} functions to server actions: ${exports.map(exp => exp.n).join(', ')}.`)
+                                    
+                                    const entrypoint =
+                                        serialization === 'JSON'
+                                            ? 'astro-server-actions/runtime/json.browser.ts'
+                                            : 'astro-server-actions/runtime/codec.browser.ts'
+
+                                    const imports = `import { createProxy } from "${entrypoint}"`
+                                    
+                                    const callableExports =
+                                        exports.map(({ n: name }) => {
+                                            if (name === 'default') return `export default createProxy("${name}")`
+                                            else                    return `export const ${name} = createProxy("${name}")`
+                                        })
+                                    
+                                    return imports + '\n' + callableExports.join('\n')
+                                }
+                            }
+                        }, {
+                            name: "astro-actions-inject-env-ts",
+                            enforce: "post",
+                            config() {
+                                const envDTsPath = url.fileURLToPath(new URL("env.d.ts", srcDir))
+                                const actionsDTsPath = url.fileURLToPath(new URL(".astro/actions.d.ts", root))
+                                const actionsFilePathString = JSON.stringify(actionsFilePath)
+                                const _relativeActionsDTsPath = path.relative(path.dirname(envDTsPath), actionsDTsPath)
+                                const relativeActionsDTsPath = JSON.stringify(_relativeActionsDTsPath.replaceAll("\\", "/"))
+                                
+                                fs.mkdirSync(path.dirname(actionsDTsPath), { recursive: true })
+                                
+                                fs.writeFileSync(
+                                    actionsDTsPath,
+                                    dedent`
+                                    // this line is apparently necessary, maybe a typescript bug
+                                    import(${actionsFilePathString})
+                                    
+                                    declare module "astro:actions" {
+                                        export * from ${actionsFilePathString}
+                                        export { default } from ${actionsFilePathString}
+                                    }
+                                    `
+                                )
+                                
+                                let envDTsContents = fs.readFileSync(envDTsPath, "utf-8")
+                                
+                                if (envDTsContents.includes(`/// <reference types=${relativeActionsDTsPath} />`)) { return }
+                                
+                                const newEnvDTsContents = envDTsContents.replace(
+                                    '/// <reference types="astro/client" />',
+                                    dedent`
+                                    /// <reference types="astro/client" />
+                                    /// <reference types=${relativeActionsDTsPath} />
+                                    `
+                                )
+                                
+                                if (newEnvDTsContents === envDTsContents) { return }
+                                
+                                fs.writeFileSync(envDTsPath, newEnvDTsContents)
+                                logger.info("Updated env.d.ts types")
+                            }
+                        }]
                     }
-                } satisfies AstroUserConfig)
+                } satisfies Partial<AstroConfig>)
             }
         }
     }
-}
-
-function getEntrypoint({ serialization, target } : ServerActionsIntegrationOptions & { target: 'server' | 'browser' }) {
-    if (target === 'server') {
-        if (serialization === 'es-codec') return 'astro-server-actions/runtime/codec.endpoint.ts'
-        if (serialization === 'JSON')     return 'astro-server-actions/runtime/json.endpoint.ts'
-        throw new Error
-    }
-    
-    if (target === 'browser') {
-        if (serialization === 'es-codec') return 'astro-server-actions/runtime/codec.browser.ts'
-        if (serialization === 'JSON')     return 'astro-server-actions/runtime/json.browser.ts'
-        throw new Error
-    }
-
-    throw new Error
-}
-
-interface VitePluginOptions extends ServerActionsIntegrationOptions {
-    command : 'dev' | 'build' | 'preview'
-    config  : AstroConfig
-    logger  : AstroIntegrationLogger
-}
-
-function createVitePlugin({ config, logger, serialization }: VitePluginOptions): VitePlugin {
-    
-    let serverActionsModuleId : string
-
-    const vitePlugin: VitePlugin = {
-        name: 'astro-server-actions',
-        resolveId(source, importer) {
-            if (source === 'astro:actions') return this.resolve("astro-server-actions/runtime/client.ts")
-            if (source === 'actions:implementation') return this.resolve(config.srcDir.pathname + 'actions', importer)
-        },
-        async transform(code, id, options) {
-            // @ts-expect-error - allow it to fail at runtime if resolution fails
-            serverActionsModuleId ??= (await this.resolve(config.srcDir.pathname + 'actions')).id
-
-            // during build, options is { ssr: true } for code that runs on the server, and undefined otherwise
-            // during dev, options is { ssr: true } for code that runs on the server, and { ssr: false } otherwise
-            // transformation of server actions to remote calls is only intended for the client
-            if (options?.ssr !== true && id === serverActionsModuleId) {
-                const [ _, exports ] = ESModuleLexer.parse(code)
-
-                logger.info(`Transforming ${exports.length} functions to server actions: ${exports.map(exp => exp.n).join(', ')}.`)
-                
-                const imports = `import { createProxy } from "${getEntrypoint({ serialization, target: 'browser'})}"`
-                
-                const callableExports =
-                    exports.map(({ n: name }) => {  
-                        if (name === 'default') return `export default createProxy("${name}")`
-                        else                    return `export const ${name} = createProxy("${name}")`
-                    })
-                
-                return imports + '\n' + callableExports.join('\n')
-            }
-        }
-    }
-
-    return vitePlugin
 }

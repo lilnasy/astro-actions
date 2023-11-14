@@ -2,23 +2,26 @@
   "name": "astro-server-actions",
   "version": "0.1.0",
   "description": "",
-  "include": [ "LICENSE", "integration.ts", "runtime/" ],
+  "include": [
+    "LICENSE",
+    "integration.ts",
+    "runtime/"
+  ],
   "type": "module",
   "exports": {
     ".": "./integration.ts",
-    "./runtime/*": "./runtime/*",
-    "./client": { "types": "./runtime/client.d.ts" }
+    "./runtime/*": "./runtime/*"
   },
   "keywords": [],
   "author": "Arsh",
   "license": "Public Domain",
   "dependencies": {
-    "es-codec": "0.5.0",
-    "es-module-lexer": "1.3.0"
+    "es-codec": "^0.5",
+    "es-module-lexer": "1",
+    "string-dedent": "3"
   },
   "devDependencies": {
     "@types/node": "20",
-    "@types/ws": "8",
     "astro": "3",
     "typescript": "5",
     "vite": "4"
