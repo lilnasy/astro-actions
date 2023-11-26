@@ -5,22 +5,22 @@ Write functions that run on the server, and can be called by the browser.
 
 #### Create a new project
 ```
-npx create-astro --template basics --yes astro-server-actions-project
-pnpm create astro --template basics --yes astro-server-actions-project
-yarn create astro --template basics --yes astro-server-actions-project
+npx create-astro --template basics --yes astro-actions-project
+pnpm create astro --template basics --yes astro-actions-project
+yarn create astro --template basics --yes astro-actions-project
 ```
 
 #### Install the package
 ```
-npm install lilnasy/astro-server-actions
-pnpm add lilnasy/astro-server-actions
-yarn add lilnasy/astro-server-actions
+npm install lilnasy/astro-actions
+pnpm add lilnasy/astro-actions
+yarn add lilnasy/astro-actions
 ```
 
 #### Add server functions to your config
 ```ts
 // astro.config.mjs
-import actions from 'astro-server-actions'
+import actions from 'astro-actions'
 
 export default defineConfig({
     integrations: [actions()]
@@ -41,7 +41,7 @@ export async function hello() {
 // src/pages/index.astro
 ---
 <script>
-    import { hello } from "../actions.ts"
+    import { hello } from "astro:actions"
     const message = await hello()
     console.log(message)
 </script>

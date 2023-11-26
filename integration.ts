@@ -9,7 +9,7 @@ import type { ServerActionsIntegrationOptions } from "./interface.ts"
 export default function (options: Partial<ServerActionsIntegrationOptions> = {}): AstroIntegration {
     const { serialization = 'es-codec' } = options
     return {
-        name: 'astro-server-actions',
+        name: 'astro-actions',
         hooks: {
             'astro:config:setup' ({ config: { srcDir, root }, injectRoute, updateConfig, logger }) {
                 
@@ -28,8 +28,8 @@ export default function (options: Partial<ServerActionsIntegrationOptions> = {})
                     pattern   : '/_action',
                     entryPoint:
                         serialization === 'JSON'
-                            ? 'astro-server-actions/runtime/json.endpoint.ts'
-                            : 'astro-server-actions/runtime/codec.endpoint.ts',
+                            ? 'astro-actions/runtime/json.endpoint.ts'
+                            : 'astro-actions/runtime/codec.endpoint.ts',
                 })
                 
                 updateConfig({
@@ -40,11 +40,11 @@ export default function (options: Partial<ServerActionsIntegrationOptions> = {})
                                 if (id === 'astro-actions-internal:implementation') return actionsFilePath
                                 if (id === 'astro:actions') {
                                     if (ssr === true) return actionsFilePath
-                                    return 'fake module id to load astro actions'
+                                    return id
                                 }
                             },
                             async load(id) {
-                                if (id === 'fake module id to load astro actions') {
+                                if (id === 'astro:actions') {
                                     const { code } = await this.load({ id: actionsFilePath })
                                     const [ _, exports ] = ESModuleLexer.parse(code!)
                                     
@@ -52,8 +52,8 @@ export default function (options: Partial<ServerActionsIntegrationOptions> = {})
                                     
                                     const entrypoint =
                                         serialization === 'JSON'
-                                            ? 'astro-server-actions/runtime/json.browser.ts'
-                                            : 'astro-server-actions/runtime/codec.browser.ts'
+                                            ? 'astro-actions/runtime/json.browser.ts'
+                                            : 'astro-actions/runtime/codec.browser.ts'
 
                                     const imports = `import { createProxy } from "${entrypoint}"`
                                     

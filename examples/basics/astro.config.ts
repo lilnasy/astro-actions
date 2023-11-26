@@ -1,5 +1,5 @@
 import { defineConfig } from "astro/config"
-import actions from "astro-server-actions"
+import actions from "astro-actions"
 import node from "@astrojs/node"
 
 export default defineConfig({

@@ -1,5 +1,5 @@
 {
-  "name": "astro-server-actions",
+  "name": "astro-actions",
   "version": "0.1.0",
   "description": "",
   "include": [
@@ -16,14 +16,14 @@
   "author": "Arsh",
   "license": "Public Domain",
   "dependencies": {
-    "es-codec": "^0.5",
+    "es-codec": "0.5",
     "es-module-lexer": "1",
     "string-dedent": "3"
   },
   "devDependencies": {
     "@types/node": "20",
     "astro": "3",
-    "typescript": "5",
+    "typescript": "5.3",
     "vite": "4"
   }
 }

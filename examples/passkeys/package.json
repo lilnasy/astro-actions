@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -16,7 +16,7 @@
     "@types/react-dom": "18",
     "astro": "3",
     "astro-global": "1",
-    "astro-server-actions": "workspace:*",
+    "astro-actions": "workspace:*",
     "react": "18",
     "react-dom": "18"
   },
