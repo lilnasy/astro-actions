@@ -13,7 +13,9 @@ interface Credential {
 }
 
 interface Data {
-    notes: string[]
+    registered: Date
+    loginCount: number
+    lastLogin: Date
 }
 
 const users: Details[] = []
@@ -34,7 +36,7 @@ export function create<Part extends Pick<Details, 'username'>>(userDetails: Part
         id: crypto.getRandomValues(new Uint8Array(32)),
         displayName: userDetails.username,
         credentials: [],
-        data: { notes: ["This is you first note!"] },
+        data: { registered: new Date(), loginCount: 0, lastLogin: new Date() },
         ...userDetails
     }
 
@@ -51,11 +53,14 @@ export function read<Part extends Pick<Details, 'username'>>(userDetails: Part) 
 
     return NotFound
 }
-    
-export function update<Part extends Pick<Details, 'username'>>(userDetails: Part) {
+
+type DeepPartial<T> = {
+    [P in keyof T]?: Partial<T[P]>;
+};
+export function update<Part extends Pick<Details, 'username'> & DeepPartial<Details>>(userDetails: Part) {
     for (const user of users) {
         if (user.username === userDetails.username) {
-            return Object.assign(user, userDetails)
+            return Object.assign(user, userDetails, { data: { ...user.data, ...userDetails.data } })
         }
     }
     return NotFound

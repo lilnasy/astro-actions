@@ -170,9 +170,18 @@ async function _loginUser(loginRequest: LoginRequest, context: ActionContext) {
     )
 
     if (!verified) return { error: "invalid signature" } as const
+    
+    User.update({
+        username: loginRequest.username,
+        data: {
+            loginCount: userDetails.data.loginCount + 1,
+            lastLogin: new Date()
+        }
+    })
 
     const expires = new Date(Date.now() + 1000 * 60 * 60)
     const token = await Token.create(loginRequest.username, expires)
+
     context.cookies.set("Token", token, { expires })
 
     return { success: loginRequest.username } as const
