@@ -1,6 +1,6 @@
 import * as User from "db/users.ts"
 import * as Token from "db/tokens.ts"
-import Astro from "astro:global"
+import { defineAction, type ActionContext } from "astro:actions/server"
 
 export async function generateChallenge(username: string, hostname: string): Promise<GenerateChallengeReturn> {
     const userDetails = User.read({ username })
@@ -87,7 +87,13 @@ export async function generateChallenge(username: string, hostname: string): Pro
     }
 }
 
-export async function registerUser(user: {
+export const registerUser = defineAction({
+    fetch(input: Registration, context) {
+        return _registerUser(input, context)
+    }
+})
+
+interface Registration {
     username: string
     credential: {
         rawId: BufferSource
@@ -96,7 +102,9 @@ export async function registerUser(user: {
         algorithm: number
         type: "public-key"
     }
-}) {
+}
+
+async function _registerUser(user: Registration, context: ActionContext) {
     const readResult = User.read(user)
     
     if (readResult === User.InvalidUsername) return { error: "invalid username" } as const
@@ -127,20 +135,24 @@ export async function registerUser(user: {
 
     const expires = new Date(Date.now() + 1000 * 60 * 60)
     const token = await Token.create(user.username, expires)
-    Astro.cookies.set("Token", token, { expires })
+    context.cookies.set("Token", token, { expires })
     
     return { success: user.username } as const
 }
 
-export async function loginUser(
-    username: string,
-    response: {
-        clientDataJSON: AuthenticatorAssertionResponse['clientDataJSON']
-        authenticatorData: AuthenticatorAssertionResponse['authenticatorData']
-        signature: AuthenticatorAssertionResponse['signature']
+export const loginUser = defineAction({
+    fetch(input: LoginRequest, context) {
+        return _loginUser(input, context)
     }
-) {
-    const userDetails = User.read({ username })
+})
+
+interface LoginRequest {
+    username: string
+    response: Pick<AuthenticatorAssertionResponse, "clientDataJSON" | "authenticatorData" | "signature">
+}
+
+async function _loginUser(loginRequest: LoginRequest, context: ActionContext) {
+    const userDetails = User.read(loginRequest)
     
     if (userDetails === User.InvalidUsername) return { error: "invalid username" } as const
     else if (userDetails === User.NotFound) return { error: "user not found" } as const
@@ -148,22 +160,22 @@ export async function loginUser(
     const { pendingChallenge, credentials } = userDetails
     if (pendingChallenge === undefined) return { error: "no challenge pending" } as const
 
-    const clientDataHash = await crypto.subtle.digest("SHA-256", response.clientDataJSON)
+    const clientDataHash = await crypto.subtle.digest("SHA-256", loginRequest.response.clientDataJSON)
     const { key } = credentials[0]
     const verified = await crypto.subtle.verify(
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         key,
-        response.signature,
-        Uint8Array.of(...new Uint8Array(response.authenticatorData), ...new Uint8Array(clientDataHash))
+        loginRequest.response.signature,
+        Uint8Array.of(...new Uint8Array(loginRequest.response.authenticatorData), ...new Uint8Array(clientDataHash))
     )
 
     if (!verified) return { error: "invalid signature" } as const
 
     const expires = new Date(Date.now() + 1000 * 60 * 60)
-    const token = await Token.create(username, expires)
-    Astro.cookies.set("Token", token, { expires })
+    const token = await Token.create(loginRequest.username, expires)
+    context.cookies.set("Token", token, { expires })
 
-    return { success: username } as const
+    return { success: loginRequest.username } as const
 }
 
 type GenerateChallengeReturn =

@@ -17,8 +17,7 @@
   "license": "Public Domain",
   "dependencies": {
     "es-codec": "0.5",
-    "es-module-lexer": "1",
-    "string-dedent": "3"
+    "typescript": "5"
   },
   "devDependencies": {
     "@types/node": "20",

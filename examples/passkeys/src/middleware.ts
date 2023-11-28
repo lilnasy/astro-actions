@@ -14,8 +14,8 @@ export async function onRequest(ctx: APIContext, next: MiddlewareNext<Response>)
                 }
             }
         }
-        catch (e) {
-            console.error(new Error("Failed to read token even though it existed.", { cause: e }))
+        catch (cause) {
+            console.error(new Error("Failed to read token even though it was included in the cookies.", { cause }))
         }
     }
     return next()

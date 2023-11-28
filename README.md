@@ -1,4 +1,4 @@
-# Astro Server Actions
+# Astro Actions
 Write functions that run on the server, and can be called by the browser.
 
 ## Getting Started
@@ -41,14 +41,14 @@ export async function hello() {
 // src/pages/index.astro
 ---
 <script>
-    import { hello } from "astro:actions"
+    import { hello } from "astro:actions/client"
     const message = await hello()
     console.log(message)
 </script>
 ```
 
 ## Can I use this in React?
-Yes! you can import a server function into any framework component, including React, Vue, Svelte, Solid, and more.
+Yes! You can use the `astro:actions/client` module in any framework component, including React, Vue, Svelte, Solid, and more.
 
 
 ## What can I share between the browser and server?

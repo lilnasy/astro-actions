@@ -1,10 +1,11 @@
 import { useState } from "react"
-import * as Actions from "astro:actions"
+import * as Actions from "astro:actions/client"
 
 export default function () {
     const [ username, setUsername ] = useState("")
     const [ output, setOutput ] = useState("")
     const [ submitting, setSubmitting ] = useState(false)
+
     return <form onSubmit={async event => {
         event.preventDefault()
         setSubmitting(true)
@@ -45,7 +46,7 @@ async function maybeLoginOrSignup(username: string, setOutput: React.Dispatch<Re
         if (cred === null) return setOutput("This browser could not create a credential that macthes the given options")
         const pkCred = cred as PublicKeyCredential
         const response = pkCred.response as AuthenticatorAttestationResponse
-        const { error, success } = await Actions.registerUser({
+        const { error, success } = await Actions.registerUser.fetch({
             username,
             credential: {
                 rawId: pkCred.rawId,
@@ -64,10 +65,13 @@ async function maybeLoginOrSignup(username: string, setOutput: React.Dispatch<Re
         if (cred === null) return setOutput("Failed to get credential")
         const pkCred = cred as PublicKeyCredential
         const response = pkCred.response as AuthenticatorAssertionResponse
-        const { error, success } = await Actions.loginUser(username, {
-            authenticatorData: response.authenticatorData,
-            clientDataJSON: response.clientDataJSON,
-            signature: response.signature
+        const { error, success } = await Actions.loginUser.fetch({
+            username,
+            response: {
+                authenticatorData: response.authenticatorData,
+                clientDataJSON: response.clientDataJSON,
+                signature: response.signature
+            }
         })
         if (error) return setOutput(error)
         return location.pathname = "/"

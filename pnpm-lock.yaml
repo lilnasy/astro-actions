@@ -9,26 +9,20 @@ importers:
   .:
     dependencies:
       es-codec:
-        specifier: ~0.5.0
+        specifier: '0.5'
         version: 0.5.0
-      es-module-lexer:
-        specifier: ^1.4.1
-        version: 1.4.1
-      string-dedent:
-        specifier: ^3.0.1
-        version: 3.0.1
+      typescript:
+        specifier: '5'
+        version: 5.3.2
     devDependencies:
       '@types/node':
-        specifier: ^20.10.0
+        specifier: '20'
         version: 20.10.0
       astro:
-        specifier: ^3.6.1
+        specifier: '3'
         version: 3.6.1(@types/node@20.10.0)(typescript@5.3.2)
-      typescript:
-        specifier: ~5.3.2
-        version: 5.3.2
       vite:
-        specifier: ^4.5.0
+        specifier: '4'
         version: 4.5.0(@types/node@20.10.0)
 
   examples/basics:
@@ -63,9 +57,6 @@ importers:
       astro-actions:
         specifier: workspace:*
         version: link:../..
-      astro-global:
-        specifier: '1'
-        version: 1.1.0(astro@3.6.1)
       react:
         specifier: '18'
         version: 18.2.0
@@ -989,14 +980,6 @@ packages:
 
   /array-iterate@2.0.1:
     resolution: {integrity: sha512-I1jXZMjAgCMmxT4qxXfPXa6SthSoE8h6gkSI9BGGNv8mP8G/v0blc+qFnZu6K42vTOiuME596QaLO0TP3Lk0xg==}
-
-  /astro-global@1.1.0(astro@3.6.1):
-    resolution: {integrity: sha512-8T+YZl+FNCXgAbuKsm6xKIzkJh48+rris9CR3pm6zBgYZUqvGsXi0wt3jUOti/pXPmNr2ObFNHPqBjPuUPN00Q==}
-    peerDependencies:
-      astro: ^3.5.2
-    dependencies:
-      astro: 3.6.1(@types/node@20.10.0)(typescript@5.2.2)
-    dev: false
 
   /astro@3.6.1(@types/node@20.10.0)(typescript@5.2.2):
     resolution: {integrity: sha512-dCpiJAJYfVb2dLDuHcJLZyCM3Ha529Bou7RZtcc4agu8aH1ybEkSXJbV3bCLoL1aDgvp/cdf7qzDkZwkL+2rRg==}
@@ -3142,11 +3125,6 @@ packages:
       fast-fifo: 1.3.2
       queue-tick: 1.0.1
     optional: true
-
-  /string-dedent@3.0.1:
-    resolution: {integrity: sha512-A2zCXSgpPrpFi1lDJlDwIPYakBWeDtQZ8ZBKssB8M/WbtNEKTzsl1yCDRmHx55jSB27xZDQ6NOtRYekESWx6fw==}
-    engines: {node: '>=0.12.0'}
-    dev: false
 
   /string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
