@@ -4,7 +4,6 @@ import fs from "node:fs"
 import ts from "typescript"
 import dedent from "./dedent.ts"
 import type { AstroConfig, AstroIntegration, AstroIntegrationLogger } from "astro"
-import { get } from "node:http"
 
 export interface Options {
     /**
@@ -39,7 +38,7 @@ export default function (options: Partial<Options> = {}): AstroIntegration {
                 
                 injectRoute({
                     pattern   : "/_action",
-                    entryPoint:
+                    entrypoint:
                         serialization === "JSON"
                             ? "astro-actions/runtime/internal-server-endpoint-json.ts"
                             : "astro-actions/runtime/internal-server-endpoint-escodec.ts",
@@ -121,32 +120,26 @@ function getExportsOfModule(path: string) {
     return exports.map(exp => exp.getName())
 }
 
-function injectEnvDTS(config: AstroConfig, logger: AstroIntegrationLogger, typesPath: URL | string) {
+function injectEnvDTS(config: AstroConfig, logger: AstroIntegrationLogger, specifier: URL | string) {
     const envDTsPath = url.fileURLToPath(new URL("env.d.ts", config.srcDir))
-
-    if (typesPath instanceof URL) {
-        typesPath = url.fileURLToPath(typesPath)
-        typesPath = path.relative(url.fileURLToPath(config.srcDir), typesPath)
-        typesPath = typesPath.replaceAll("\\", "/")
+    
+    if (specifier instanceof URL) {
+        specifier = url.fileURLToPath(specifier)
+        specifier = path.relative(url.fileURLToPath(config.srcDir), specifier)
+        specifier = specifier.replaceAll("\\", "/")
     }
-
+    
     let envDTsContents = fs.readFileSync(envDTsPath, "utf-8")
-                                
-    if (envDTsContents.includes(`/// <reference types='${typesPath}' />`)) { return }
-    if (envDTsContents.includes(`/// <reference types="${typesPath}" />`)) { return }
+    
+    if (envDTsContents.includes(`/// <reference types='${specifier}' />`)) { return }
+    if (envDTsContents.includes(`/// <reference types="${specifier}" />`)) { return }
     
     const newEnvDTsContents = envDTsContents.replace(
         `/// <reference types='astro/client' />`,
-        dedent`
-        /// <reference types='astro/client' />
-        /// <reference types='${typesPath}' />
-        `
+        `/// <reference types='astro/client' />\n/// <reference types='${specifier}' />\n`
     ).replace(
         `/// <reference types="astro/client" />`,
-        dedent`
-        /// <reference types="astro/client" />
-        /// <reference types="${typesPath}" />
-        `
+        `/// <reference types="astro/client" />\n/// <reference types="${specifier}" />\n`
     )
     
     // the odd case where the user changed the reference to astro/client

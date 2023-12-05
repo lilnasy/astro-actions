@@ -10,8 +10,8 @@
       "astro": "astro"
     },
     "dependencies": {
-      "@astrojs/node": "6",
-      "astro": "3",
+      "@astrojs/node": "7",
+      "astro": "4",
       "astro-actions": "workspace:*"
     }
   }

@@ -10,11 +10,11 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/node": "6",
+    "@astrojs/node": "7",
     "@astrojs/react": "3",
     "@types/react": "18",
     "@types/react-dom": "18",
-    "astro": "3",
+    "astro": "4",
     "astro-actions": "workspace:*",
     "canvas-confetti": "^1.9.2",
     "react": "18",

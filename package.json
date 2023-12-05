@@ -8,6 +8,9 @@
     "runtime/"
   ],
   "type": "module",
+  "scripts": {
+    "test": "vitest --browser.name=chrome --browser.headless"
+  },
   "exports": {
     ".": "./integration.ts",
     "./runtime/*": "./runtime/*"
@@ -21,8 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "20",
-    "astro": "3",
-    "typescript": "5.3",
-    "vite": "4"
+    "astro": "4",
+    "typescript": "5.3"
   }
 }
