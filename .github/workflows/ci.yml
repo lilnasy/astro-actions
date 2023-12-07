@@ -47,8 +47,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       
-      - name: Install browsers
-        run: pnpm playwright install
+      - name: Install chromium
+        run: pnpm playwright install chromium
       
       - name: Check
         if: false
