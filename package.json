@@ -8,6 +8,9 @@
     "runtime/"
   ],
   "type": "module",
+  "scripts": {
+    "test": "node --no-warnings --experimental-loader playwright/lib/transform/esmLoader node_modules/playwright/cli.js test"
+  },
   "exports": {
     ".": "./integration.ts",
     "./runtime/*": "./runtime/*"
@@ -15,14 +18,16 @@
   "keywords": [],
   "author": "Arsh",
   "license": "Public Domain",
+  "packageManager": "pnpm@8.11.0",
   "dependencies": {
     "es-codec": "0.5",
     "typescript": "5"
   },
   "devDependencies": {
+    "@astrojs/node": "7",
     "@types/node": "20",
-    "astro": "3",
-    "typescript": "5.3",
-    "vite": "4"
+    "astro": "4",
+    "playwright": "1",
+    "typescript": "5.3"
   }
 }

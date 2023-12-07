@@ -2,9 +2,7 @@ import url from "node:url"
 import path from "node:path"
 import fs from "node:fs"
 import ts from "typescript"
-import dedent from "./dedent.ts"
 import type { AstroConfig, AstroIntegration, AstroIntegrationLogger } from "astro"
-import { get } from "node:http"
 
 export interface Options {
     /**
@@ -24,89 +22,79 @@ export default function (options: Partial<Options> = {}): AstroIntegration {
         name: "astro-actions",
         hooks: {
             "astro:config:setup" ({ config, injectRoute, updateConfig, logger }) {
-                
-                let actionsFilePath = ""
+                let _actionsFilePath = ""
                 const actionsTypesUrl = new URL(".astro/actions.d.ts", config.root)
                 
                 for (const extension of ["ts", "js", "mjs", "mts"]) {
                     const filePath = url.fileURLToPath(new URL("actions." + extension, config.srcDir))
-                    if (fs.existsSync(filePath)) actionsFilePath = filePath.replaceAll("\\", "/")
+                    if (fs.existsSync(filePath)) _actionsFilePath = filePath.replaceAll("\\", "/")
                     else continue
                     break
                 }
                 
-                if (!actionsFilePath) return logger.error("No actions file found. Make sure you have an actions.ts file in your src directory.")
+                if (!_actionsFilePath) return logger.error("No actions file found. Make sure you have an actions.ts file in your src directory.")
+                const actionsFilePath = _actionsFilePath
                 
                 injectRoute({
                     pattern   : "/_action",
-                    entryPoint:
-                        serialization === "JSON"
-                            ? "astro-actions/runtime/internal-server-endpoint-json.ts"
-                            : "astro-actions/runtime/internal-server-endpoint-escodec.ts",
+                    entrypoint: `astro-actions/runtime/internal-server-endpoint-${serialization === "JSON" ? "json": "escodec"}.ts`
                 })
-
-                updateConfig({
-                    vite: {
-                        plugins: [{
-                            name: "astro-actions/vite",
-                            resolveId(id) {
-                                if (id === "astro:actions/client") return actionsFilePath
-                                if (id === "astro:actions/server") return this.resolve("astro-actions/runtime/server.ts")
-                            },
-                            async transform(_code, id, { ssr } = {}) {
-                                if (id === actionsFilePath && Boolean(ssr) === false) {
-                                    const exports = getExportsOfModule(actionsFilePath)
-                                    
-                                    logger.info(`Transforming ${exports.length} functions to server actions: ${exports.join(", ")}.`)
-                                    
-                                    const entrypoint =
-                                        serialization === "JSON"
-                                            ? "astro-actions/runtime/internal-client-proxy-json.js"
-                                            : "astro-actions/runtime/internal-client-proxy-escodec.js"
-
-                                    const imports = `import { proxyAction } from "${entrypoint}"`
-                                    
-                                    const callableExports =
-                                            exports.map(name => {
-                                            if (name === "default") return `export default proxyAction("${name}")`
-                                            else                    return `export const ${name} = proxyAction("${name}")`
-                                        })
-                                    
-                                    return imports + "\n" + callableExports.join("\n")
-                                }
-                            }
-                        }, {
-                            name: "astro-actions/vite/types",
-                            enforce: "post",
-                            config() {
-                                injectEnvDTS(config, logger, actionsTypesUrl)
-
-                                const actionsTypesPath = url.fileURLToPath(actionsTypesUrl)
-                                const exports = getExportsOfModule(actionsFilePath)
-                                
-                                fs.mkdirSync(path.dirname(actionsTypesPath), { recursive: true })
-                                
-                                fs.writeFileSync(
-                                    actionsTypesPath,
-                                    dedent`
-                                    type ProxyAction<T> = import("astro-actions/runtime/internal-types.ts").ProxyAction<T>
-
-                                    declare module "astro:actions/client" {
-                                        type actions = typeof import(${JSON.stringify(actionsFilePath.replaceAll("\\", "/"))})
-                                    ${exports.map(name => name === "default"
-                                        ? `    export default ProxyActions<actions["default"]>`
-                                        : `    export const ${name}: ProxyAction<actions["${name}"]>`
-                                        ).join("\n")}
-                                    }
-                                    declare module "astro:actions/server" {
-                                        export * from "astro-actions/runtime/server.ts"
-                                    }
-                                    `
-                                )
-                            }
-                        }]
+                
+                updateConfig({ vite: { plugins: [{
+                    name: "astro-actions/vite",
+                    resolveId(id) {
+                        if (id === "astro:actions/client") return actionsFilePath
+                        if (id === "astro:actions/server") return this.resolve("astro-actions/runtime/server.ts")
+                    },
+                    async transform(_code, id, { ssr } = {}) {
+                        if (id === actionsFilePath && Boolean(ssr) === false) {
+                            const exports = getExportsOfModule(actionsFilePath)
+                            
+                            logger.info(`Transforming ${exports.length} functions to server actions: ${exports.join(", ")}.`)
+                            
+                            const entrypoint =
+                                serialization === "JSON"
+                                    ? "astro-actions/runtime/internal-client-proxy-json.js"
+                                    : "astro-actions/runtime/internal-client-proxy-escodec.js"
+                            
+                            const imports = `import { proxyAction } from "${entrypoint}"`
+                            
+                            const callableExports =
+                                    exports.map(name => {
+                                    if (name === "default") return `export default proxyAction("${name}")`
+                                    else                    return `export const ${name} = proxyAction("${name}")`
+                                })
+                            
+                            return imports + "\n" + callableExports.join("\n")
+                        }
                     }
-                } satisfies Partial<AstroConfig>)
+                }, {
+                    name: "astro-actions/vite/types",
+                    enforce: "post",
+                    config() {
+                        injectEnvDTS(config, logger, actionsTypesUrl)
+                        
+                        const actionsTypesPath = url.fileURLToPath(actionsTypesUrl)
+                        const exports = getExportsOfModule(actionsFilePath)
+                        
+                        fs.mkdirSync(path.dirname(actionsTypesPath), { recursive: true })
+                        
+                        fs.writeFileSync(
+                            actionsTypesPath,
+                            'type ProxyAction<T> = import("astro-actions/runtime/internal-types.ts").ProxyAction<T>\n' +
+                            'declare module "astro:actions/client" {\n' +
+                            `    type actions = typeof import(${JSON.stringify(actionsFilePath.replaceAll("\\", "/"))})\n` +
+                            exports.map(name => name === "default" ?
+                            '    export default ProxyActions<actions["default"]>\n' :
+                            `    export const ${name}: ProxyAction<actions["${name}"]>\n`
+                            ).join("\n") +
+                            '}\n' +
+                            'declare module "astro:actions/server" {\n' +
+                            '    export * from "astro-actions/runtime/server.ts"\n' +
+                            '}\n'
+                        )
+                    }
+                }] } })
             }
         }
     }
@@ -121,32 +109,26 @@ function getExportsOfModule(path: string) {
     return exports.map(exp => exp.getName())
 }
 
-function injectEnvDTS(config: AstroConfig, logger: AstroIntegrationLogger, typesPath: URL | string) {
+function injectEnvDTS(config: AstroConfig, logger: AstroIntegrationLogger, specifier: URL | string) {
     const envDTsPath = url.fileURLToPath(new URL("env.d.ts", config.srcDir))
-
-    if (typesPath instanceof URL) {
-        typesPath = url.fileURLToPath(typesPath)
-        typesPath = path.relative(url.fileURLToPath(config.srcDir), typesPath)
-        typesPath = typesPath.replaceAll("\\", "/")
+    
+    if (specifier instanceof URL) {
+        specifier = url.fileURLToPath(specifier)
+        specifier = path.relative(url.fileURLToPath(config.srcDir), specifier)
+        specifier = specifier.replaceAll("\\", "/")
     }
-
+    
     let envDTsContents = fs.readFileSync(envDTsPath, "utf-8")
-                                
-    if (envDTsContents.includes(`/// <reference types='${typesPath}' />`)) { return }
-    if (envDTsContents.includes(`/// <reference types="${typesPath}" />`)) { return }
+    
+    if (envDTsContents.includes(`/// <reference types='${specifier}' />`)) { return }
+    if (envDTsContents.includes(`/// <reference types="${specifier}" />`)) { return }
     
     const newEnvDTsContents = envDTsContents.replace(
         `/// <reference types='astro/client' />`,
-        dedent`
-        /// <reference types='astro/client' />
-        /// <reference types='${typesPath}' />
-        `
+        `/// <reference types='astro/client' />\n/// <reference types='${specifier}' />\n`
     ).replace(
         `/// <reference types="astro/client" />`,
-        dedent`
-        /// <reference types="astro/client" />
-        /// <reference types="${typesPath}" />
-        `
+        `/// <reference types="astro/client" />\n/// <reference types="${specifier}" />\n`
     )
     
     // the odd case where the user changed the reference to astro/client

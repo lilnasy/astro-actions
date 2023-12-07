@@ -3,7 +3,7 @@ import actions from "astro-actions"
 import node from "@astrojs/node"
 
 export default defineConfig({
-    integrations: [ actions() ],
+    integrations: [actions()],
     output: "server",
-    adapter: node({ mode: "standalone" }),
+    adapter: node({ mode: "middleware" }),
 })

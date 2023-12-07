@@ -1,0 +1,9 @@
+{
+    "name": "@test/basics",
+    "private": "true",
+    "dependencies": {
+      "@astrojs/node": "7",
+      "astro": "4",
+      "astro-actions": "workspace:*"
+    }
+  }

@@ -1,0 +1,9 @@
+<script>
+	import { prefixedEchoReverse } from "astro:actions/client"
+	document.querySelector("button")!.addEventListener("click", async () => {
+		document.querySelector("output")!.textContent = await prefixedEchoReverse(document.querySelector("input")!.value)
+	})
+</script>
+<input type="text">
+<button>Click me</button>
+<output>The result of the action should appear here</output>
