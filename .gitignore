@@ -2,3 +2,8 @@ node_modules
 examples/*/node_modules
 examples/*/dist
 examples/*/.astro
+examples/*/src/env.d.ts
+tests/fixtures/*/node_modules
+tests/fixtures/*/dist
+tests/fixtures/*/.astro
+tests/fixtures/*/src/env.d.ts

@@ -9,7 +9,7 @@
   ],
   "type": "module",
   "scripts": {
-    "test": "vitest --browser.name=chrome --browser.headless"
+    "test": "node --no-warnings --experimental-loader playwright/lib/transform/esmLoader node_modules/playwright/cli.js test"
   },
   "exports": {
     ".": "./integration.ts",
@@ -23,8 +23,10 @@
     "typescript": "5"
   },
   "devDependencies": {
+    "@astrojs/node": "7",
     "@types/node": "20",
     "astro": "4",
+    "playwright": "1",
     "typescript": "5.3"
   }
 }
