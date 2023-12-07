@@ -46,7 +46,10 @@ jobs:
       
       - name: Install dependencies
         run: pnpm install
-            
+      
+      - name: Install browsers
+        run: pnpm playwright install
+      
       - name: Check
         if: false
         run: pnpm run check
